@@ -2,8 +2,15 @@
 
 #include <Arduino.h>   // needed for PlatformIO
 #include <Mesh.h>
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
+
+
 
 #include "TimeSeriesData.h"
+
+
 
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
 #include <InternalFileSystem.h>
@@ -31,6 +38,7 @@
 #define PERM_RESERVED4         (1 << 5)
 #define PERM_RECV_ALERTS_LO    (1 << 6)   // low priority alerts
 #define PERM_RECV_ALERTS_HI    (1 << 7)   // high priority alerts
+#define DHTTYPE DHT11   // DHT 11
 
 #ifndef FIRMWARE_BUILD_DATE
   #define FIRMWARE_BUILD_DATE   "6 Mar 2026"
@@ -44,6 +52,8 @@
 
 #define MAX_SEARCH_RESULTS      8
 #define MAX_CONCURRENT_ALERTS   4
+
+extern DHT dht;
 
 class SensorMesh : public mesh::Mesh, public CommonCLICallbacks {
 public:

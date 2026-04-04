@@ -1,5 +1,6 @@
 #include "SensorMesh.h"
 
+
 #ifdef DISPLAY_CLASS
   #include "UITask.h"
   static UITask ui_task(display);
@@ -9,7 +10,10 @@ class MyMesh : public SensorMesh {
 public:
   MyMesh(mesh::MainBoard& board, mesh::Radio& radio, mesh::MillisecondClock& ms, mesh::RNG& rng, mesh::RTCClock& rtc, mesh::MeshTables& tables)
      : SensorMesh(board, radio, ms, rng, rtc, tables), 
-       battery_data(12*24, 5*60)    // 24 hours worth of battery data, every 5 minutes
+       battery_data(12*24, 5*60),    // 24 hours worth of battery data, every 5 minutes
+       ir_data(12*24, 5*60),         // 24 hours worth of IR sensor data, every 5 minutes
+       hum_data(12*24, 5*60),        // 24 hours worth of humidity data, every 5 minutes
+       temp_data(12*24, 5*60)         // 24 hours worth of temperature data, every 5 minutes
   {
   }
 
@@ -17,18 +21,30 @@ protected:
   /* ========================== custom logic here ========================== */
   Trigger low_batt, critical_batt;
   TimeSeriesData  battery_data;
+  TimeSeriesData  ir_data;
+  TimeSeriesData  hum_data;
+  TimeSeriesData  temp_data;
+
 
   void onSensorDataRead() override {
     float batt_voltage = getVoltage(TELEM_CHANNEL_SELF);
-
+    int ir_value = digitalRead(IR_SENSOR_PIN) == LOW ? 1 : 0;
+    int hum_value = dht.readHumidity();
+    int temp_value = dht.readTemperature();
     battery_data.recordData(getRTCClock(), batt_voltage);   // record battery
+    ir_data.recordData(getRTCClock(), ir_value);   // record IR sensor data
+    hum_data.recordData(getRTCClock(), hum_value);   // record humidity data
+    temp_data.recordData(getRTCClock(), temp_value);   // record temperature data
     alertIf(batt_voltage < 3.4f, critical_batt, HIGH_PRI_ALERT, "Battery is critical!");
     alertIf(batt_voltage < 3.6f, low_batt, LOW_PRI_ALERT, "Battery is low");
   }
 
   int querySeriesData(uint32_t start_secs_ago, uint32_t end_secs_ago, MinMaxAvg dest[], int max_num) override {
     battery_data.calcMinMaxAvg(getRTCClock(), start_secs_ago, end_secs_ago, &dest[0], TELEM_CHANNEL_SELF, LPP_VOLTAGE);
-    return 1;
+    ir_data.calcMinMaxAvg(getRTCClock(), start_secs_ago, end_secs_ago, &dest[1], TELEM_CHANNEL_SELF, LPP_DIGITAL_INPUT);
+    hum_data.calcMinMaxAvg(getRTCClock(), start_secs_ago, end_secs_ago, &dest[2], TELEM_CHANNEL_SELF, LPP_RELATIVE_HUMIDITY);
+    temp_data.calcMinMaxAvg(getRTCClock(), start_secs_ago, end_secs_ago, &dest[3], TELEM_CHANNEL_SELF, LPP_TEMPERATURE);
+    return 4;
   }
 
   bool handleCustomCommand(uint32_t sender_timestamp, char* command, char* reply) override {

@@ -63,6 +63,8 @@
 
 #define ALERT_ACK_EXPIRY_MILLIS         8000   // wait 8 secs for ACKs to alert messages
 
+DHT dht = DHT(DHT_SENSOR_PIN, DHTTYPE);
+
 static File openAppend(FILESYSTEM* _fs, const char* fname) {
   #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
     return _fs->open(fname, FILE_O_WRITE);
@@ -179,6 +181,8 @@ uint8_t SensorMesh::handleRequest(uint8_t perms, uint32_t sender_timestamp, uint
     telemetry.reset();
     telemetry.addVoltage(TELEM_CHANNEL_SELF, (float)board.getBattMilliVolts() / 1000.0f);
     telemetry.addDigitalInput(TELEM_CHANNEL_SELF, digitalRead(IR_SENSOR_PIN) == LOW ? 1 : 0);
+    telemetry.addTemperature(TELEM_CHANNEL_SELF, dht.readTemperature());
+    telemetry.addRelativeHumidity(TELEM_CHANNEL_SELF, dht.readHumidity());
     // query other sensors -- target specific
     sensors.querySensors(0xFF & perm_mask, telemetry);  // allow all telemetry permissions for admin or guest
     // TODO: let requester know permissions they have:  telemetry.addPresence(TELEM_CHANNEL_SELF, perms);
